@@ -1,5 +1,5 @@
 #Loading list of activites 
-activities <- read.table("UCI HAR Dataset\\activity_labels.txt", col.names=c('Activity_Code', "Activity_Name"))
+activities <- read.table("UCI HAR Dataset/activity_labels.txt", col.names=c('Activity_Code', "Activity_Name"))
 
 #Loading list of features
 features <- read.table("UCI HAR Dataset/features.txt", col.names = c("Feature_Code","Feature_Name"))
@@ -15,14 +15,14 @@ features$Feature_Name <- gsub("std\\(\\)", "SD", features$Feature_Name)
 features$Feature_Name <- gsub("-meanFreq\\(\\)", "MeanFrequency", features$Feature_Name)
 
 #Loading Train data
-train_x <- read.table("UCI HAR Dataset\\train\\X_train.txt", col.names=features$Feature_Name)
-train_y <- read.table("UCI HAR Dataset\\train\\y_train.txt", col.names=c("Activity_Code"))
-train_subject <- read.table("UCI HAR Dataset\\train\\subject_train.txt", col.names=c("Subject"))
+train_x <- read.table("UCI HAR Dataset/train/X_train.txt", col.names=features$Feature_Name)
+train_y <- read.table("UCI HAR Dataset/train/y_train.txt", col.names=c("Activity_Code"))
+train_subject <- read.table("UCI HAR Dataset/train/subject_train.txt", col.names=c("Subject"))
 
 #Loading Test data
-test_x <- read.table("UCI HAR Dataset\\test\\X_test.txt", col.names=features$Feature_Name)
-test_y <- read.table("UCI HAR Dataset\\test\\y_test.txt", col.names=c("Activity_Code"))
-test_subject <- read.table("UCI HAR Dataset\\test\\subject_test.txt", col.names=c("Subject"))
+test_x <- read.table("UCI HAR Dataset/test/X_test.txt", col.names=features$Feature_Name)
+test_y <- read.table("UCI HAR Dataset/test/y_test.txt", col.names=c("Activity_Code"))
+test_subject <- read.table("UCI HAR Dataset/test/subject_test.txt", col.names=c("Subject"))
 
 #Merging X, Y and Subject from Train and Test datasets
 merged_x <- rbind(train_x, test_x)
