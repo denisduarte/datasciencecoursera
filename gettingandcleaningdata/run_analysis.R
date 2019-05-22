@@ -42,4 +42,4 @@ merged_data <- cbind(merged_subject, merged_y, merged_x) %>%
 tidyDataset <- merged_data %>% group_by(Subject, Activity_Name) %>% summarise_all(list(mean))
 
 #Saving dataset to text file
-write.table(tidyDataset, "tidyDataset.txt")
+write.table(tidyDataset, "tidyDataset.txt", row.name=FALSE)
