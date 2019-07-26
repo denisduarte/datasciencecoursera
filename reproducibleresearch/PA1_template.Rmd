@@ -1,0 +1,225 @@
+Reproducible Research Course Project 1
+========================================
+
+This report was created for the first project of the Reproducible Research course, which is part of Data Science Specialization provided by Johns Hopkins University by Coursera. The course was held in July 2019.
+
+
+##Loading libraries
+
+The libraries used in the analysis were:
+
+* dplyr (for data manipulation)
+* wesanderson (for plots with beautiful colors)
+* ggplot2 (for nicer plots)
+
+```{r librarie, message=FALSE, warning=FALSE}
+library(dplyr)
+library(wesanderson)
+library(ggplot2)
+```
+
+
+##Loading the data
+
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+The data was downloaded from the URL https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip.
+
+```{r}
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+download.file(url, destfile="activity.zip")
+unzip("activity.zip")
+
+data <- read.csv("activity.csv")
+head(data)
+```
+
+The orginal dataset has been changed to include the field "formated_interval" . This field was used in the creation of charts, so that the understanding of the times is clearer.
+
+```{r}
+format_interval <- function(interval) {
+    for (i in 1:length(interval)) {
+        if (length(interval[i]) < 4)
+            interval[i] <- sprintf("%04d", as.numeric(interval[i]))
+        
+        interval[i] <- gsub('(\\d{2})(\\d{2})', '\\1:\\2', interval[i])
+    }
+    return(interval)
+}
+
+data$formatted_interval <- format_interval(data$interval)
+head(data)
+```
+
+
+##Data Analysis
+
+###Total Steps taken per day
+
+The first analysis performed was the creation of a histogram that displays the totals of steps taken per day. In addition, the average and the median of the total step were calculated.
+
+####Histogram with total steps taken per day
+
+```{r plot1, out.width = "100%"}
+stepsperday <- data %>% 
+               group_by(date) %>% 
+               summarise(total_steps=sum(steps)) %>% 
+               na.omit()
+
+hist(stepsperday$total_steps, breaks = 30, 
+            col=wes_palette("GrandBudapest1", n=1), 
+            main="Histogram of total steps per day",
+            xlab="Steps per day")
+```
+
+####Mean of steps taken per day
+```{r}
+mean(stepsperday$total_steps)
+```
+
+####Median of steps taken per day
+```{r}
+median(stepsperday$total_steps)
+```
+
+###Total Steps taken per interval, across all days
+
+The second analysis performed was the comparison of the average of steps taken in each 5 minute-interval, from 00:00 to 23:55, considering all measured days. To this end, a timeseries was created. In addition, the interval with the highest average steps was highlighted below the graph.
+
+####Timeseries with average number of steps taken, across all days
+```{r plot2, out.width = "100%"}
+timeseries <- data %>% 
+              group_by(interval, formatted_interval) %>% 
+              summarise(meansteps = mean(steps, na.rm=TRUE))
+
+ts <- ggplot(timeseries, aes(x=interval, y=meansteps)) + 
+    geom_line(color=wes_palette("Chevalier1", n=1), size=1) + 
+    ggtitle("Timeseries with average number of steps\n
+            taken by interval") +
+    labs(y="Average steps", x = "Interval") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+          axis.text=element_text(size=8),
+          plot.title = element_text(hjust = 0.5),
+          legend.title = element_blank())
+
+breaks_seq <- seq(1, length(timeseries$interval), 12)
+ts + with(timeseries, scale_x_continuous(labels=formatted_interval[breaks_seq],
+                                        breaks=interval[breaks_seq]))
+```
+
+
+####The 5-minute interval with the maximum number of steps, on average, saw the one below.
+
+```{r}
+timeseries[which.max(timeseries$meansteps),]
+```
+
+
+
+##Removing NA's
+
+The next phase of the analysis was to perform similar evaluations to those previously performed, replacing the Not Available (NA) values by a valid one.
+
+The first step was calculating the total numer of NA's in the dataset
+
+```{r}
+    sum(is.na(data$steps))
+```
+
+
+Then, a second dataset was created from the first and each NA found was replaced by the average steps for that interval
+
+```{r}
+fillNA <- function(x) {
+    return(timeseries[which(timeseries$interval == trimws(x["interval"])), ]$meansteps)
+}
+
+data_filled <- data
+for(i in 1:nrow(data)) {
+    if (is.na(data[i, "steps"]))
+        data_filled[i, "steps"] <- fillNA(data[i,])
+}
+```
+
+
+
+Throughout the analysis, the changes were minimal.
+
+###Total Steps taken per day without NA's
+
+```{r plot3, out.width = "100%"}
+stepsperday_filled <- data_filled %>% 
+                      group_by(date) %>% 
+                      summarise(total_steps=sum(steps))
+
+hist(stepsperday_filled$total_steps, breaks = 30, 
+            col=wes_palette("GrandBudapest1", n=1), 
+            main="Histogram of total steps per day",
+            xlab="Steps per day")
+```
+
+####Mean of steps taken per day without NA's
+```{r}
+mean(stepsperday_filled$total_steps)
+```
+
+####Median of steps taken per day without NA's
+```{r}
+median(stepsperday_filled$total_steps)
+```
+As seen above, Replacing NA's with valid values had little effect on the analysis, with only a small increase in total steps per day and a median increase of 1,19 steps.
+
+
+##Comparing Weekdays and weekends
+
+The last analysis was a comparison of the total steps at each interval on weekdays and weekends. For this, a column was created in the previous dataset, without NA's, informing if the date of that observation was a weekday or a weekend.
+
+To achieve this, the function *isWeekend*  was created and applied to all dataset records.
+
+```{r}
+isWeekday <- function(date) {
+    
+    wdays <- c("seg", "ter", "qua", "qui", "sex")
+    
+    day_type <- "weekend"
+    if (weekdays(as.Date(date, format = "%Y-%m-%d"), abbreviate=TRUE) %in% wdays)
+        day_type <- "weekday"
+    
+    as.factor(day_type)
+}
+
+data_filled$Wday <- sapply(data_filled$date, isWeekday)
+
+```
+
+###Total Steps taken per interval, across all days
+
+With the new column, a new timeseries was create, similar to the previous one, comparing the average steps on weekdays and weekends.
+
+####Timeseries with average number of steps taken, across all days
+
+```{r plot4, out.width = "100%"}
+timeseriesWday <- data_filled %>% 
+              group_by(interval, formatted_interval, Wday) %>% 
+              summarise(meansteps = mean(steps, na.rm=TRUE))
+
+timeseriesWday$Wday2 <- timeseriesWday$Wday
+
+ts <- ggplot(timeseriesWday, aes(x=interval, y=meansteps, col=Wday2)) + 
+    geom_line(data=transform(timeseriesWday, Wday = NULL), 
+              aes(group = Wday2),size = 1, alpha = 0.3) +   
+    geom_line(size = 1) + 
+    facet_grid(Wday~.) +
+    ggtitle("Timeseries with average number of steps\n
+            taken by interval (weekdays and weekends)") +
+    labs(y="Average steps", x = "Interval") +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1),
+          axis.text=element_text(size=8),
+          plot.title = element_text(hjust = 0.5),
+          legend.title = element_blank()
+    )
+
+breaks_seq <- seq(1, length(timeseries$interval), 24)
+ts + with(timeseries, scale_x_continuous(labels=formatted_interval[breaks_seq],
+                                        breaks=interval[breaks_seq]))
+```
